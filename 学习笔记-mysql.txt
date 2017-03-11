@@ -1,1 +1,154 @@
-学习笔记：
+1.mysql 的full-text索引可以有效避免使用like查询时的低效问题
+创建方法：
+     修改表结构添加全文索引
+
+     ALTER TABLE article ADD FULLTEXT index_content(content)
+
+     直接创建索引
+
+     CREATE FULLTEXT INDEX index_content ON article(content)  
+	 查询语言的写法：
+     SELECT url FROM domainlists_url  WHERE MATCH (全文索引的字段名称) AGAINST ('查询内容') order by id desc LIMIT 10
+	 
+2.B-Tree索引有一个较大的限制，那就是参与一个索引的所有字段的长度之和不能超过1000字节、
+
+3.MySQL的mysqlimport命令可以以特定格式导入文件到数据库
+
+4.alter table命令可以修改表的类型，但是用户手册上写的是以下情况可能会造成表文件受损：
+时候可能会出现表文件损坏：
+1、当mysqld正在做写操作的时候被kill掉或者其他情况造成异常终止；
+2、主机Crash；
+3、磁盘硬件故障；
+4、 MyISAM存储引擎中的bug
+可以尝试通过check table 命令来尝试校验他，并可以通过repair table命令来尝试修复
+
+5.MySQL的外键
+外键和引用的完整性
+利用外键关系可以在某个数据表声明与另外一个数据表的某个索引相关联的索引，同时还可以将约束条件施加到外键关系中。
+外键可以帮助维护数据的一致性，如果不使用外键就需要我们自己来维护不同数据表之间的一致性。
+Mysql中，InnoDB存储引擎提供了对外键的支持
+父表：包含原始键值的数据表
+子表：引用父表中键值的数据表
+
+CREATE TABLE `test_user_info` (
+  `id` int(8) NOT NULL AUTO_INCREMENT,
+  `user_id` int(8) NOT NULL,
+  `address` varchar(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `user_id` FOREIGN KEY (`user_id`) REFERENCES `test_user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
+
+CONSTRAINT子句用于给外键关系起一个名字，如果没有mysql会默认创建一个名字
+FOREIGN KEY子句列出子表里面被索引的数据列，必须匹配附表中的索引值
+REFERENCES子句列出父表中索引数据列的名字，子表中的外键将根据该子句索引父表中的数据列
+ON DELETE子句用于指定当父表中的数据被删除时子表应该做什么
+ON UPDATE子句用于指定当父表中的数据被更新时子表应该做什么
+当父表被删除时子表的几种行为
+NO ACTION　当父表中的数据被删除时，与之关联的子表不做改动
+CASCADＥ　当父表中的数据被删除时，与之关联的子表中的数据也被删除
+SET NULL　当父表中的数据被删除时，与之关联的子表中的索引列被设置为ＮＵＬＬ　
+SET DEFAULT　当父表中的数据被删除时，与之关联的子表中的索引列被设置为默认值
+
+建立外键的前提：
+两个表必须是InnoDB表类型。
+使用在外键关系的域必须为索引型(Index)。
+使用在外键关系的域必须与数据类型相似
+表间一对一关系示例：
+有两张表，第一张表是记录公司有多少人，都有谁，也就是员工编号及员工姓名这些基本表。另一张表记录每个月发给用户多少工资，所谓工资表是也。
+但是工资表里面不能以员工姓名为主键，同样要通过员工id，因为员工的姓名是可能重复的啊。部门经理叫张三，小弟也叫张三，那这俩张三的工资能一样吗？并且员工表里面的每个人都有工资，否则谁也不给你干活，且一个人只能有一份工资，否则老板也不同意了。所以员工表和工资表是通过员工id进行关联的一 对一关系。
+/*建立员工表*/
+create table employees ( 
+id int(5) not null auto_increment , 
+name varchar(8) not null, 
+primary key (id)
+) 
+type＝innodb;
+/*
+建立工资表
+*/
+create table payroll( 
+id int(5) not null, 
+emp_id int(5) not null, 
+name varchar(8) not null, 
+payroll float(4,2) not null, 
+primary key(id), 
+index emp_id (emp_id),
+foreign key (emp_id) references employees (id)
+)
+type = innodb
+
+6.权限系统
+相关权限信息主要存储在几个被称为 grant tables 的系统表中，即： mysql.User， mysql.db， mysql.Host， mysql.table_priv和
+mysql.column_priv。由于权限信息数据量比较小，而且访问又非常频繁，所以Mysql在启
+动的时候，就会将所有的权限信息都Load到内存中保存在几个特定的结构中。所以才有我
+们每次手工修改了权限相关的表之后， 都需要执行 “ FLUSH PRIVILEGES”命令重新加载MySQL
+的权限信息。当然，如果我们通过GRANT， REVOKE或者DROP USER命令来修改相关权限， 则
+不需要手工执行FLUSH PRIVILEGES命令，因为通过GRANT， REVOKE或者DROP USER命令所
+做的权限修改在修改系统表的同时也会更新内存结构中的权限信息
+为某个用户授权，可以使用GRANT命令，要去除某个用户已有的权限则使用REVOKE命令
+给某个用户授权的时候，不仅需要指定用户名，同时还要指定来访主机。如果在授
+权的时候仅指定用户名， 则MySQL会自动认为是对'username'@'%'授权。 要去除某个用户的
+的权限同样也需要指定来访主机
+7.五个不同级别的权限
+
+1、 Global Level;
+2、Database Level
+果要授予Database Level的权限，则可以有两种实现方式：
+1、在执行GRANT命令的时候，通过“ database.*”来限定权限作用域为database整个
+数据库，如下：
+root@localhost : mysql 06:06:26> GRANT ALTER ON test.* TO 'def'@'localhost';
+Query OK, 0 rows affected (0.00 sec)
+root@localhost : test 06:12:45> SHOW GRANTS FOR def@localhost
+2、先通过USE命令选定需要授权的数据库，然后通过“ *”来限定作用域，这样授权的
+作用域实际上就是当前选定的整个数据库。
+root@localhost : mysql 06:14:05> USE test;
+Database changed
+root@localhost : test 06:13:10> GRANT DROP ON * TO 'def'@'localhost'
+3、table level
+4、column level
+
+注意：当某个用户在向某个表插入（ INSERT）数据的时候，如果该用户在该表中某列上
+面没有INSERT权限，则该列的数据将以默认值填充。这一点和很多其他的数据库都有一些
+区别。
+于Global Level的权限信息的修改，仅仅只有更改之后新建连接才会用到，对于已
+经连接上的session并不会受到影响。而对于Database Level的权限信息的修改，只有当
+客户端请求执行了“ USE database_name” 命令之后，才会在重新校验中使用到新的权限信
+息。 所以有些时候如果在做了比较紧急的Global和Database这两个Level的权限变更之后，
+可能需要通过“ KILL” 命令将已经连接在MySQL中的session 杀掉强迫他们重新连接以使
+用更新后的权限。对于Table Level和Column Level的权限，则会在下一次需要使用到该
+权限的Query被请求的时候生效，也就是说，对于应用来讲，这两个Level的权限，更新之
+后立刻就生效了，而不会需要执行“ KILL” 命令
+
+8.mysqldump备份
+通过mysqldump生成INSERT语句的逻辑备份文件的时候，有一个非常有用的选项可
+以供我们使用，那就是“ --master-data[=value]”。当添加了“ --master-data=1”的时候，
+mysqldump会将当前MySQL使用到binlog日志的名称和位置记录到dump文件中， 并且是被
+以CHANGE_MASTER语句的形式记录，如果仅仅只是使用“ --master-data” 或者“ --masterdata＝2”， 则CHANGE_MASTER语句会以注释的形式存在。 这个选项在实施slave的在线搭建
+的时候是非常有用的，即使不是进行在线搭建slave，也可以在某些情况下做恢复的过程中
+通过备份的binlog做进一步恢复操作
+MySQL中一般都使用以下两种方法来获得可以自定义分隔符的纯文本备份文件。
+1、通过执行SELECT ... TO OUTFILE FROM ...命令来实现
+2、ELECT * INTO OUTFILE '/tmp/dump.text'
+
+实除了生成 INSERT语句之外， mysqldump还同样能实现上面“ SELECT ... TO
+OUTFILE FROM ...”所实现的功能， 而且同时还会生成一个相关数据库结构对应的创建脚本
+mysqldump -uroot -p123456 meteo sdata --where=" sensorid=11 and fieldid=0" > /home/xyx/Temp.txt
+
+
+9.mysql从备份文件恢复数据
+是通过MySQL的“ LOAD DATA INFILE” 命令来实现，另一种方法就是通过MySQL提供的使用工具mysqlimport来进行恢复
+
+10.MySQL物理备份
+(1)MyISAM存储引擎
+将MyISAM的物理文件copy出来
+或者
+MySQL自己提供了一个使用程序mysqlhotcopy，这个程序就是专门用来备份MyISAM存
+储引擎的。不过如果你有除了MyISAM之外的其他非事务性存储引擎，也可以通过合适的参
+数设置，或者微调该备份脚本，也都能通过mysqlhotcopy程序来完成相应的备份任务，基
+本用法如下：
+mysqlhotcopy db_name[./table_regex/] [new_db_name | directory]
+
+11.MySQLReplication
+12.Mysql Cluster
+搭建MySQL集群，实现数据的分布式存储，这一点可以在以后需要的时候再具体学习
