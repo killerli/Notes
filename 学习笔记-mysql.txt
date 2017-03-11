@@ -150,5 +150,6 @@ MySQL自己提供了一个使用程序mysqlhotcopy，这个程序就是专门用
 mysqlhotcopy db_name[./table_regex/] [new_db_name | directory]
 
 11.MySQLReplication
+实现从一个MySQL的Instance复制数据到另一个Instance
 12.Mysql Cluster
 搭建MySQL集群，实现数据的分布式存储，这一点可以在以后需要的时候再具体学习
