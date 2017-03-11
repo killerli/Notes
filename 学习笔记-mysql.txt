@@ -153,3 +153,4 @@ mysqlhotcopy db_name[./table_regex/] [new_db_name | directory]
 实现从一个MySQL的Instance复制数据到另一个Instance
 12.Mysql Cluster
 搭建MySQL集群，实现数据的分布式存储，这一点可以在以后需要的时候再具体学习
+http://lizhenliang.blog.51cto.com/7876557/1290451
